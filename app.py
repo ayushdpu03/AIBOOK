@@ -1,16 +1,15 @@
 from flask import Flask, render_template, request, redirect, url_for
 import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
-from nltk.stem import PorterStemmer
+from nltk.stem.porter import PorterStemmer
 from sklearn.metrics.pairwise import cosine_similarity
 from pymongo import MongoClient
 import certifi
 
-# Initialize Flask application
-app = Flask(__name__, static_url_path='/static')
-
-# Load the dataset
+# Load your dataset (assuming Final_ai.csv is in the same directory)
 new_df = pd.read_csv("Final_ai.csv")
+
+app = Flask(__name__, static_url_path='/static')
 
 # MongoDB configuration
 client = MongoClient(
@@ -23,41 +22,32 @@ feedback_collection = db.feedback
 
 @app.route('/')
 def home():
-    # Retrieve top-rated books from MongoDB
-    data = list(books_collection.find({"rating": 5}).sort("rating", 1).limit(8))
-    author_names = [row['books'] for row in data]
-    genre = [row['mod_title'] for row in data]
-    image = [row['img'] for row in data]
-    rating = [row['rating'] for row in data]
-    title = [row['mod_title'] for row in data]
-    
-    return render_template('home.html', total_data=data,
-                           author_data=author_names,
-                           image_data=image,
-                           title_data=title,
-                           rating_data=rating,
-                           genre_data=genre)
+    try:
+        # Query MongoDB for books with rating 5, limit to 8 results, sorted by rating ascending
+        data = list(books_collection.find({"rating": 5}).sort("rating", 1).limit(8))
+        return render_template('home.html', total_data=data)
+    except Exception as e:
+        print(f"Error fetching data from MongoDB: {e}")
+        return render_template('error.html', message="Error fetching data from MongoDB")
 
 @app.route('/recommend', methods=['GET', 'POST'])
 def recommend():
-    data = []
-    error = False
     if request.method == 'POST':
-        title_input = request.form.get('title_input', '')
+        title_input = request.form.get('title_input', 'None')
 
-        # CountVectorizer for text processing
+        # Prepare CountVectorizer
         cv = CountVectorizer(max_features=5000, stop_words="english")
         vectors = cv.fit_transform(new_df['books']).toarray()
 
-        # Compute cosine similarity matrix
+        # Calculate cosine similarity
         similar = cosine_similarity(vectors)
-
-        # Stemming function
         ps = PorterStemmer()
+
+        # Function to stem text
         def stem(text):
             return " ".join([ps.stem(word) for word in text.split()])
 
-        # Recommendation function
+        # Function to recommend books
         def recommend_fun(book):
             recommended_books = []
             try:
@@ -66,12 +56,13 @@ def recommend():
                 book_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:6]
 
                 for i in book_list:
-                    recommended_books.append({
+                    item = {
                         'title': new_df.iloc[i[0]].mod_title,
-                        'img': new_df.iloc[i[0]].img,
+                        'img_url': new_df.iloc[i[0]].img,
                         'rating': new_df.iloc[i[0]].rating,
                         'books': new_df.iloc[i[0]].books
-                    })
+                    }
+                    recommended_books.append(item)
                 return recommended_books
 
             except IndexError as e:
@@ -79,21 +70,20 @@ def recommend():
                 return []
 
         data = recommend_fun(title_input)
-        if not data:
-            error = True
 
-    return render_template('recommend.html', data=data, error=error)
+        return render_template('recommend.html', data=data)
 
-@app.route('/feedback', methods=['GET', 'POST'])
+    return render_template('recommend.html')
+
+@app.route('/feedback', methods=['POST'])
 def feedback():
-    if request.method == 'POST':
-        title = request.form['title']
-        author = request.form['author']
-        genre = request.form['genre']
-        rating = request.form['rating']
-        img_url = request.form['img-url']
-        
-        # Insert feedback into MongoDB
+    title = request.form['title']
+    author = request.form['author']
+    genre = request.form['genre']
+    rating = request.form['rating']
+    img_url = request.form['img-url']
+
+    try:
         feedback_collection.insert_one({
             'title': title,
             'author': author,
@@ -101,11 +91,20 @@ def feedback():
             'img_url': img_url,
             'rating': rating
         })
-        
-        print("Feedback recorded successfully")
+        print("Feedback successfully submitted")
         return redirect(url_for('home'))
 
-    return render_template('feedback.html')
+    except Exception as e:
+        print(f"Error submitting feedback: {e}")
+        return render_template('error.html', message="Error submitting feedback")
+
+@app.errorhandler(404)
+def not_found(error):
+    return render_template('error.html', message="Page not found"), 404
+
+@app.errorhandler(500)
+def server_error(error):
+    return render_template('error.html', message="Internal server error"), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
