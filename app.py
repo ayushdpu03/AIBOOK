@@ -1,30 +1,29 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for
 import pandas as pd
-import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
-from nltk.stem.porter import PorterStemmer
+from nltk.stem import PorterStemmer
 from sklearn.metrics.pairwise import cosine_similarity
 from pymongo import MongoClient
 import certifi
-import os
 
-
-new_df = pd.read_csv("Final_ai.csv")
-
+# Initialize Flask application
 app = Flask(__name__, static_url_path='/static')
+
+# Load the dataset
+new_df = pd.read_csv("Final_ai.csv")
 
 # MongoDB configuration
 client = MongoClient(
-    "mongodb+srv://pj29102005:bTQfPPqugcyv9mv8@cluster0.9nt5ygc.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0",
-    tls=True,
-    tlsCAFile=certifi.where()
+    "mongodb+srv://pj29102005:bTQfPPqugcyv9mv8@cluster0.9nt5ygc.mongodb.net/library?retryWrites=true&w=majority&tls=true&tlsCAFile="
+    + certifi.where()
 )
-db = client['library']
-books_collection = db['books_data']
-feedback_collection = db['feedback']
+db = client.library
+books_collection = db.books_data
+feedback_collection = db.feedback
 
 @app.route('/')
 def home():
+    # Retrieve top-rated books from MongoDB
     data = list(books_collection.find({"rating": 5}).sort("rating", 1).limit(8))
     author_names = [row['books'] for row in data]
     genre = [row['mod_title'] for row in data]
@@ -44,22 +43,21 @@ def recommend():
     data = []
     error = False
     if request.method == 'POST':
-        title_input = request.form.get('title_input', 'None')
-        print(title_input)
+        title_input = request.form.get('title_input', '')
 
+        # CountVectorizer for text processing
         cv = CountVectorizer(max_features=5000, stop_words="english")
-        cv.fit_transform(new_df['books']).toarray().shape
         vectors = cv.fit_transform(new_df['books']).toarray()
 
+        # Compute cosine similarity matrix
         similar = cosine_similarity(vectors)
+
+        # Stemming function
         ps = PorterStemmer()
-
         def stem(text):
-            y = []
-            for i in text.split():
-                y.append(ps.stem(i))
-            return " ".join(y)
+            return " ".join([ps.stem(word) for word in text.split()])
 
+        # Recommendation function
         def recommend_fun(book):
             recommended_books = []
             try:
@@ -68,21 +66,20 @@ def recommend():
                 book_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:6]
 
                 for i in book_list:
-                    item = []
-                    item.extend(list([new_df.iloc[i[0]].mod_title]))
-                    item.extend(list([new_df.iloc[i[0]].img]))
-                    item.extend(list([new_df.iloc[i[0]].rating]))
-                    item.extend(list([new_df.iloc[i[0]].books]))
-                    recommended_books.append(item)
+                    recommended_books.append({
+                        'title': new_df.iloc[i[0]].mod_title,
+                        'img': new_df.iloc[i[0]].img,
+                        'rating': new_df.iloc[i[0]].rating,
+                        'books': new_df.iloc[i[0]].books
+                    })
                 return recommended_books
 
-            except (IndexError, KeyError) as e:
-                print('\n\n', f"Exception occurred: {e}")
+            except IndexError as e:
+                print(f"Exception occurred: {e}")
+                return []
 
         data = recommend_fun(title_input)
-        print('\n', "data: ", data, '\n')
-
-        if data is None:
+        if not data:
             error = True
 
     return render_template('recommend.html', data=data, error=error)
@@ -96,6 +93,7 @@ def feedback():
         rating = request.form['rating']
         img_url = request.form['img-url']
         
+        # Insert feedback into MongoDB
         feedback_collection.insert_one({
             'title': title,
             'author': author,
@@ -104,7 +102,7 @@ def feedback():
             'rating': rating
         })
         
-        print("successful")
+        print("Feedback recorded successfully")
         return redirect(url_for('home'))
 
     return render_template('feedback.html')
