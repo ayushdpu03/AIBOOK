@@ -1,0 +1,151 @@
+@import url('https://fonts.googleapis.com/css2?family=Croissant+One&display=swap');
+
+.body{
+    background-color: #DAC0A3;
+}
+
+.topnav {
+    background-color: #FF6969;
+    overflow: hidden;
+    position:fixed;
+    z-index: 1000;
+    top: 0;
+    width: 100%;
+  }
+
+  .topnav a {
+    float: left;
+    color: #f2f2f2;
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+    font-size: 17px;
+    
+  }
+  
+  .topnav a:hover {
+    background-color: #C70039;
+    color:#ffffff;
+    font-weight: 800px;
+  }
+  
+
+  .name{
+    font-size: 500%;
+    font-family: 'Croissant One', cursive;
+    font-weight: 300px;
+    text-shadow: 2px 3px 3px grey;
+    
+  }
+
+  .centre{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 18px;
+    margin-top: 35px;
+  }
+
+  .float-container {
+    padding: 20px;
+}
+
+.float-child {
+    width: 50%;
+    float: left;
+    padding: 20px;
+    
+} 
+
+.float-child img{
+  padding-left: 80px;
+  width: 60%;
+  height: auto;
+  
+}
+
+.float-child h1{
+  display:flex ;
+  font-size:50px;
+  font-family:'Croissant One', cursive; 
+  padding-left: 10px;
+  padding-top: 70px;
+  text-shadow: 2px 2px 3px grey;
+}
+
+.float-child pre{
+  font-size: 18px;
+  padding-top:15px;
+  padding-left: 30px;
+  font-family: "Golos Text", "Golos Text Placeholder", sans-serif;
+}
+
+.topbook h1{
+  padding-top: 15px;
+  font-family: 'Croissant One', cursive;
+  display:flex;
+  justify-content: center;
+  align-items: center;
+  text-shadow: 2px 2px 3px grey;
+}
+
+.container row col-3{
+  margin-top: 30px;
+}
+
+.card{
+  background-color: #FF6969; /* Set the background color of the card */
+  border-radius: 10px; /* Rounded corners for the card */
+  box-shadow: 4px 5px 3px rgba(0, 0, 0, 0.3);
+}
+
+.get_start{
+  padding-top: 45px;
+  font-family: 'Croissant One', cursive;
+  display:flex;
+  justify-content: center;
+  align-items: center;
+  text-shadow: 2px 2px 3px grey;
+}
+
+.button{
+  display: flex;
+  justify-content: center;
+  padding-top: 25px;
+  padding-bottom: 50px;
+}
+
+.recommend_button{
+  padding: 10px 20px;
+  text-align: center;
+  cursor: pointer;
+  outline: none;
+
+  color: #141E46;
+  background-color: #FF6969;
+  border: none;
+  border-radius: 15px;
+  box-shadow: 0 9px #999;
+}
+
+.recommend_button:hover {background-color: #C70039}
+
+.recommend_button:active {
+  background-color: #C70039;
+  box-shadow: 0 5px #666;
+  transform: translateY(4px);
+}
+
+.recommend_button h4{
+  text-shadow: 2px 2px 3px grey;
+}
+
+.feedback{
+  display: flex;
+  justify-content: center;
+}
+
+.feedback pre{
+  font-family:'Croissant One', cursive; 
+  font-size: 20px;
+}

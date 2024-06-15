@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BOOKVIBER</title>
+    <link rel = "icon" href = "/static/book2.png" type = "image/x-icon">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='feedback.css') }}">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+      crossorigin="anonymous"
+    />
+
+    <script>
+        function alert_msg(){
+            alert('Feedback Submitted!!')
+        }
+    </script>
+
+</head>
+
+<body class="body">
+
+    <div class="topnav">
+        <a href="/"><strong>Home</strong></a>
+        <a href="#about"><strong>About</strong></a>
+        <a href="#recommend"><strong>Recommend</strong></a>
+        <a href="#feedback"><strong>Feedback</strong></a>
+    </div>
+
+    <div class="text">
+        <h2>Leave your remarks here!</h2>
+    </div>
+
+    <div class="form-container">
+        <form action="/feedback" method="post">
+
+            <label for="title">Book Title:</label>
+            <input type="text" id="title" name="title" required >
+
+            <label for="author">Author Name:</label>
+            <input type="text" id="author" name="author"  required>
+
+            <label for="genre">Genre:</label>
+            <input type="text" id="genre" name="genre" required>
+
+            <label for="rating">Rating:</label>
+            <input type="number" id="rating" name="rating"  required >
+
+            <label for="img-url">Image URL(optional):</label>
+            <input type="text" id="img-url" name="img-url"  >
+
+            <button type="submit" value="Submit" onclick="alert_msg()">Submit</button>
+        </form>
+    </div>
+    
+</body>
+</html>
