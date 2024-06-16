@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for
 import pymongo
 import numpy as np
 import pandas as pd
@@ -6,6 +6,7 @@ import nltk
 from sklearn.feature_extraction.text import CountVectorizer
 from nltk.stem.porter import PorterStemmer
 from sklearn.metrics.pairwise import cosine_similarity
+
 # Load your CSV data
 new_df = pd.read_csv("Final_ai.csv")
 
