@@ -1,53 +1,59 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for
+import pymongo
+import numpy as np
 import pandas as pd
+import nltk
 from sklearn.feature_extraction.text import CountVectorizer
 from nltk.stem.porter import PorterStemmer
 from sklearn.metrics.pairwise import cosine_similarity
-from pymongo import MongoClient
-import certifi
 
-# Load your dataset (assuming Final_ai.csv is in the same directory)
+# Load your CSV data
 new_df = pd.read_csv("Final_ai.csv")
 
-app = Flask(__name__, static_url_path='/static')
+app = Flask(__name__)
 
 # MongoDB configuration
-client = MongoClient(
-    "mongodb+srv://pj29102005:bTQfPPqugcyv9mv8@cluster0.9nt5ygc.mongodb.net/library?retryWrites=true&w=majority&tls=true&tlsCAFile="
-    + certifi.where()
-)
+client = pymongo.MongoClient("mongodb+srv://pj29102005:bTQfPPqugcyv9mv8@cluster0.9nt5ygc.mongodb.net/library?retryWrites=true&w=majority&appName=Cluster0")
 db = client.library
-books_collection = db.books_data
-feedback_collection = db.feedback
 
 @app.route('/')
 def home():
-    try:
-        # Query MongoDB for books with rating 5, limit to 8 results, sorted by rating ascending
-        data = list(books_collection.find({"rating": 5}).sort("rating", 1).limit(8))
-        return render_template('home.html', total_data=data)
-    except Exception as e:
-        print(f"Error fetching data from MongoDB: {e}")
-        return render_template('error.html', message="Error fetching data from MongoDB")
+    books_data = db.books_data.find({"rating": 5}).sort("rating", pymongo.ASCENDING).limit(8)
+    data = list(books_data)
+    author_names = [row['author'] for row in data]
+    genre = [row['genre'] for row in data]
+    image = [row['img'] for row in data]
+    rating = [row['rating'] for row in data]
+    title = [row['mod_title'] for row in data]
+
+    return render_template('home.html', total_data=data,
+                           author_data=author_names,
+                           image_data=image,
+                           title_data=title,
+                           rating_data=rating,
+                           genre_data=genre)
 
 @app.route('/recommend', methods=['GET', 'POST'])
 def recommend():
+    data = []
+    error = False
     if request.method == 'POST':
         title_input = request.form.get('title_input', 'None')
+        print(title_input)
 
-        # Prepare CountVectorizer
         cv = CountVectorizer(max_features=5000, stop_words="english")
+        cv.fit_transform(new_df['books']).toarray().shape
         vectors = cv.fit_transform(new_df['books']).toarray()
 
-        # Calculate cosine similarity
         similar = cosine_similarity(vectors)
         ps = PorterStemmer()
 
-        # Function to stem text
         def stem(text):
-            return " ".join([ps.stem(word) for word in text.split()])
+            y = []
+            for i in text.split():
+                y.append(ps.stem(i))
+            return " ".join(y)
 
-        # Function to recommend books
         def recommend_fun(book):
             recommended_books = []
             try:
@@ -56,55 +62,47 @@ def recommend():
                 book_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:6]
 
                 for i in book_list:
-                    item = {
-                        'title': new_df.iloc[i[0]].mod_title,
-                        'img_url': new_df.iloc[i[0]].img,
-                        'rating': new_df.iloc[i[0]].rating,
-                        'books': new_df.iloc[i[0]].books
-                    }
+                    item = []
+                    item.extend(list([new_df.iloc[i[0]].mod_title]))
+                    item.extend(list([new_df.iloc[i[0]].img]))
+                    item.extend(list([new_df.iloc[i[0]].rating]))
+                    item.extend(list([new_df.iloc[i[0]].books]))
                     recommended_books.append(item)
                 return recommended_books
 
-            except IndexError as e:
-                print(f"Exception occurred: {e}")
-                return []
+            except (IndexError, KeyError) as e:
+                print('\n\n', f"Exception occurred: {e}")
 
         data = recommend_fun(title_input)
+        print('\n', "data: ", data, '\n')
 
-        return render_template('recommend.html', data=data)
+        if data is None:
+            error = True
 
-    return render_template('recommend.html')
+    return render_template('recommend.html', data=data, error=error)
 
-@app.route('/feedback', methods=['POST'])
+@app.route('/feedback', methods=['GET', 'POST'])
 def feedback():
-    title = request.form['title']
-    author = request.form['author']
-    genre = request.form['genre']
-    rating = request.form['rating']
-    img_url = request.form['img-url']
+    if request.method == 'POST':
+        title = request.form['title']
+        author = request.form['author']
+        genre = request.form['genre']
+        rating = request.form['rating']
+        img_url = request.form['img-url']
 
-    try:
-        feedback_collection.insert_one({
+        feedback_data = {
             'title': title,
             'author': author,
             'genre': genre,
-            'img_url': img_url,
-            'rating': rating
-        })
-        print("Feedback successfully submitted")
+            'rating': rating,
+            'img_url': img_url
+        }
+        
+        db.feedback.insert_one(feedback_data)
+        print("Feedback submitted successfully")
         return redirect(url_for('home'))
 
-    except Exception as e:
-        print(f"Error submitting feedback: {e}")
-        return render_template('error.html', message="Error submitting feedback")
-
-@app.errorhandler(404)
-def not_found(error):
-    return render_template('error.html', message="Page not found"), 404
-
-@app.errorhandler(500)
-def server_error(error):
-    return render_template('error.html', message="Internal server error"), 500
+    return render_template('feedback.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
