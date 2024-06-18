@@ -4,5 +4,6 @@ numpy
 scikit-learn
 nltk
 pymongo
+certifi
 
 gunicorn
