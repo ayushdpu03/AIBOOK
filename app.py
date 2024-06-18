@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 import pandas as pd
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from nltk.stem.porter import PorterStemmer
 from pymongo import MongoClient
@@ -9,15 +9,19 @@ import os
 app = Flask(__name__, static_url_path='/static')
 app.secret_key = 'supersecretkey'  # Needed for flash messages
 
-# MongoDB configuration
+# MongoDB configuration with connection pooling
 MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://pj29102005:bTQfPPqugcyv9mv8@cluster0.9nt5ygc.mongodb.net/library?retryWrites=true&w=majority&appName=Cluster0")
-client = MongoClient(MONGO_URI)
-db = client['library']
-feedback_collection = db['feedback']
+try:
+    client = MongoClient(MONGO_URI, maxPoolSize=50)
+    db = client['library']
+    feedback_collection = db['feedback']
+except Exception as e:
+    print(f"MongoDB connection error: {e}")
+    feedback_collection = None
 
 # Function to load CSV in chunks
 def load_csv(filename):
-    chunk_size = 10  # Adjust chunk size as needed
+    chunk_size = 100  # Adjust chunk size as needed
     csv_chunks = pd.read_csv(filename, chunksize=chunk_size)
     return pd.concat(csv_chunks, ignore_index=True)
 
@@ -29,7 +33,7 @@ except FileNotFoundError as e:
     new_df = pd.DataFrame()  # Use an empty dataframe if file is not found
 
 # Initialize vectorizer and compute vectors
-cv = CountVectorizer(max_features=10, stop_words="english")
+cv = TfidfVectorizer(max_features=10, stop_words="english")
 if not new_df.empty:
     vectors = cv.fit_transform(new_df['books']).toarray()
     similar = cosine_similarity(vectors)
@@ -103,14 +107,18 @@ def feedback():
             return redirect(url_for('feedback'))
 
         try:
-            feedback_collection.insert_one({
-                'title': title,
-                'author': author,
-                'genre': genre,
-                'rating': float(rating),
-                'img_url': img_url
-            })
-            flash('Feedback submitted successfully!', 'success')
+            if feedback_collection:
+                feedback_collection.insert_one({
+                    'title': title,
+                    'author': author,
+                    'genre': genre,
+                    'rating': float(rating),
+                    'img_url': img_url
+                })
+                flash('Feedback submitted successfully!', 'success')
+            else:
+                flash('Error: MongoDB connection issue', 'error')
+
         except Exception as e:
             flash(f'An error occurred: {e}', 'error')
 
