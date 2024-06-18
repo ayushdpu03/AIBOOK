@@ -1,37 +1,32 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash
 import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from nltk.stem.porter import PorterStemmer
-from pymongo import MongoClient, errors
-import certifi
+from pymongo import MongoClient
 import os
 
 app = Flask(__name__, static_url_path='/static')
+app.secret_key = 'supersecretkey'  # Needed for flash messages
 
 # MongoDB configuration
-MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://pj29102005:bTQfPPqugcyv9mv8@cluster0.9nt5ygc.mongodb.net/library?retryWrites=true&w=majority&tls=true")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://username:password@cluster0.mongodb.net/library?retryWrites=true&w=majority")
+client = MongoClient(MONGO_URI)
+db = client['library']
+feedback_collection = db['feedback']
 
+# Read CSV file
 try:
-    client = MongoClient(MONGO_URI, tlsCAFile=certifi.where())
-    db = client['library']
-    feedback_collection = db['feedback']
-    print("Connected to MongoDB")
-except errors.ServerSelectionTimeoutError as e:
-    print(f"MongoDB connection error: {e}")
-    feedback_collection = None
-
-# Read CSV file (Load a subset of data to save memory)
-try:
-    new_df = pd.read_csv("Final_ai.csv", usecols=['books', 'img', 'mod_title', 'rating'], nrows=1000)
+    new_df = pd.read_csv("Final_ai.csv")
 except FileNotFoundError as e:
     print(f"Error: {e}")
     new_df = pd.DataFrame()  # Use an empty dataframe if file is not found
 
-# Initialize vectorizer with limited features
-cv = CountVectorizer(max_features=1000, stop_words="english")
-vectors = cv.fit_transform(new_df['books']).toarray()
-similar = cosine_similarity(vectors)
+# Initialize vectorizer and compute vectors
+cv = CountVectorizer(max_features=5000, stop_words="english")
+if not new_df.empty:
+    vectors = cv.fit_transform(new_df['books']).toarray()
+    similar = cosine_similarity(vectors)
 
 ps = PorterStemmer()
 
@@ -40,6 +35,7 @@ def stem(text):
 
 @app.route('/')
 def home():
+    # Simulate MongoDB data retrieval with CSV data for the home route
     try:
         data = new_df[new_df['rating'] == 5].sort_values(by="rating", ascending=False).head(8)
     except KeyError as e:
@@ -90,35 +86,29 @@ def recommend():
 @app.route('/feedback', methods=['GET', 'POST'])
 def feedback():
     if request.method == 'POST':
-        if feedback_collection is None:
-            return render_template('feedback.html', error="Database connection error. Please try again later.")
-        
+        title = request.form.get('title')
+        author = request.form.get('author')
+        genre = request.form.get('genre')
+        rating = request.form.get('rating')
+        img_url = request.form.get('img-url')
+
+        if not title or not author or not genre or not rating:
+            flash('All fields except Image URL are required!', 'error')
+            return redirect(url_for('feedback'))
+
         try:
-            feedback_data = {
-                'title': request.form.get('title', '').strip(),
-                'author': request.form.get('author', '').strip(),
-                'genre': request.form.get('genre', '').strip(),
-                'img_url': request.form.get('img-url', '').strip(),
-                'rating': request.form.get('rating', '').strip()
-            }
-
-            # Ensure all fields are provided
-            if not all(feedback_data.values()):
-                raise ValueError("All fields are required")
-
-            feedback_collection.insert_one(feedback_data)
-            print("Feedback successfully inserted")
-            return redirect(url_for('home'))
-        
-        except errors.PyMongoError as e:
-            print(f"PyMongo error: {e}")
-            return render_template('feedback.html', error="Database error. Please try again later.")
-        except ValueError as e:
-            print(f"Value error: {e}")
-            return render_template('feedback.html', error=str(e))
+            feedback_collection.insert_one({
+                'title': title,
+                'author': author,
+                'genre': genre,
+                'rating': float(rating),
+                'img_url': img_url
+            })
+            flash('Feedback submitted successfully!', 'success')
         except Exception as e:
-            print(f"An error occurred: {e}")
-            return render_template('feedback.html', error="An unexpected error occurred. Please try again later.")
+            flash(f'An error occurred: {e}', 'error')
+
+        return redirect(url_for('home'))
 
     return render_template('feedback.html')
 
