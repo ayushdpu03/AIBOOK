@@ -10,7 +10,7 @@ app = Flask(__name__, static_url_path='/static')
 app.secret_key = 'supersecretkey'  # Needed for flash messages
 
 # MongoDB configuration
-MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://username:password@cluster0.mongodb.net/library?retryWrites=true&w=majority")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://pj29102005:bTQfPPqugcyv9mv8@cluster0.9nt5ygc.mongodb.net/library?retryWrites=true&w=majority&appName=Cluster0")
 client = MongoClient(MONGO_URI)
 db = client['library']
 feedback_collection = db['feedback']
