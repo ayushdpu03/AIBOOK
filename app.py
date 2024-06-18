@@ -23,7 +23,7 @@ except FileNotFoundError as e:
     new_df = pd.DataFrame()  # Use an empty dataframe if file is not found
 
 # Initialize vectorizer and compute vectors
-cv = CountVectorizer(max_features=100, stop_words="english")
+cv = CountVectorizer(max_features=10, stop_words="english")
 if not new_df.empty:
     vectors = cv.fit_transform(new_df['books']).toarray()
     similar = cosine_similarity(vectors)
