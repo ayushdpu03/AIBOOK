@@ -21,7 +21,7 @@ except Exception as e:
 
 # Function to load CSV in chunks
 def load_csv(filename):
-    chunk_size = 100  # Adjust chunk size as needed
+    chunk_size = 10  # Adjust chunk size as needed
     csv_chunks = pd.read_csv(filename, chunksize=chunk_size)
     return pd.concat(csv_chunks, ignore_index=True)
 
