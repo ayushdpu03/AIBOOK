@@ -4,15 +4,22 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from nltk.stem.porter import PorterStemmer
 from pymongo import MongoClient, errors
+import certifi
 import os
 
 app = Flask(__name__, static_url_path='/static')
 
 # MongoDB configuration
-MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://pj29102005:bTQfPPqugcyv9mv8@cluster0.9nt5ygc.mongodb.net/library?retryWrites=true&w=majority&appName=Cluster0")
-client = MongoClient(MONGO_URI)
-db = client['library']
-feedback_collection = db['feedback']
+MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://pj29102005:bTQfPPqugcyv9mv8@cluster0.9nt5ygc.mongodb.net/library?retryWrites=true&w=majority&tls=true")
+
+try:
+    client = MongoClient(MONGO_URI, tlsCAFile=certifi.where())
+    db = client['library']
+    feedback_collection = db['feedback']
+    print("Connected to MongoDB")
+except errors.ServerSelectionTimeoutError as e:
+    print(f"MongoDB connection error: {e}")
+    feedback_collection = None
 
 # Read CSV file (Load a subset of data to save memory)
 try:
@@ -33,7 +40,6 @@ def stem(text):
 
 @app.route('/')
 def home():
-    # Simulate MongoDB data retrieval with CSV data for the home route
     try:
         data = new_df[new_df['rating'] == 5].sort_values(by="rating", ascending=False).head(8)
     except KeyError as e:
@@ -84,6 +90,9 @@ def recommend():
 @app.route('/feedback', methods=['GET', 'POST'])
 def feedback():
     if request.method == 'POST':
+        if feedback_collection is None:
+            return render_template('feedback.html', error="Database connection error. Please try again later.")
+        
         try:
             feedback_data = {
                 'title': request.form.get('title', '').strip(),
