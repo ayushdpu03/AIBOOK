@@ -15,15 +15,21 @@ client = MongoClient(MONGO_URI)
 db = client['library']
 feedback_collection = db['feedback']
 
+# Function to load CSV in chunks
+def load_csv(filename):
+    chunk_size = 10000  # Adjust chunk size as needed
+    csv_chunks = pd.read_csv(filename, chunksize=chunk_size)
+    return pd.concat(csv_chunks, ignore_index=True)
+
 # Read CSV file
 try:
-    new_df = pd.read_csv("Final_ai.csv")
+    new_df = load_csv("Final_ai.csv")
 except FileNotFoundError as e:
     print(f"Error: {e}")
     new_df = pd.DataFrame()  # Use an empty dataframe if file is not found
 
 # Initialize vectorizer and compute vectors
-cv = CountVectorizer(max_features=10, stop_words="english")
+cv = CountVectorizer(max_features=100, stop_words="english")
 if not new_df.empty:
     vectors = cv.fit_transform(new_df['books']).toarray()
     similar = cosine_similarity(vectors)
