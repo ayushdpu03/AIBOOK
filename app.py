@@ -12,7 +12,7 @@ app.secret_key = 'supersecretkey'  # Needed for flash messages
 # MongoDB configuration with connection pooling
 MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://pj29102005:bTQfPPqugcyv9mv8@cluster0.9nt5ygc.mongodb.net/library?retryWrites=true&w=majority&appName=Cluster0")
 try:
-    client = MongoClient(MONGO_URI, maxPoolSize=50)
+    client = MongoClient(MONGO_URI, maxPoolSize=5)
     db = client['library']
     feedback_collection = db['feedback']
 except Exception as e:
